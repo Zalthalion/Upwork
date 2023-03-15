@@ -5,13 +5,11 @@ import os
 import piexif
 import time
 from fractions import Fraction
-import dropbox
 import logging
 import shutil
 
 # Changable variables, so its easier to change throughout the code if for example a column name changes
 config_path = 'mover_config.csv'
-access_token = 'access_token'
 windows_server_folder = 'windows_server_folder'
 destination_folder = 'destination_folder'
 size = 'size'
@@ -98,16 +96,15 @@ while True:
             if header != None:
                 for row in csv_reader:
                     line = {
-                        access_token : row[0],
-                        windows_server_folder : row[1],
-                        destination_folder : row[2],
-                        size : row[3],
-                        text : row[4],
-                        font : row[5],
-                        font_size : row[6],
-                        name_prefix : row[7],
-                        latitude : row[8],
-                        longitude :row[9]
+                        windows_server_folder : row[0],
+                        destination_folder : row[1],
+                        size : row[2],
+                        text : row[3],
+                        font : row[4],
+                        font_size : row[5],
+                        name_prefix : row[6],
+                        latitude : row[7],
+                        longitude :row[8]
                     }
 
                     all_lines.append(line)
@@ -119,13 +116,6 @@ while True:
     line_counter = 1
     for entry in all_lines:
         logging.info(f"Starting to process line nr {line_counter}.")
-        try:
-            # Opens connection to dropbox
-            dbx = dropbox.Dropbox(entry[access_token])
-        except Exception as ex:
-            report_error("failed to open dropbox connection", f"Line: {line_counter}", ex, True)
-            line_counter += 1
-            continue
 
         try:
             # Gets all images from provided directory
@@ -232,12 +222,14 @@ while True:
 
             try:
                 # Uploads the file to dropbox
-                with open(full_old_image_path, "rb") as f:
-                    path = Path(file_name)
-                    timestamp = time.strftime('%Y%m%d%H%M%S')
-                    new_name = f"{path.stem}_{timestamp}{path.suffix}"
-                    d = os.path.join("/", entry[destination_folder], new_name).replace("\\", "/")
-                    dbx.files_upload(f.read(), d)
+                path = Path(file_name)
+                timestamp = time.strftime('%Y%m%d%H%M%S')
+                new_name = f"{path.stem}_{timestamp}{path.suffix}"
+                destination_path = "{0}\\\\{1}".format(entry[destination_folder],new_name)
+                # Checks if the directory exists if not then creates it
+                if not os.path.exists(entry[destination_folder]):
+                    os.mkdir(entry[destination_folder])
+                shutil.copy(full_old_image_path, destination_path)
             except Exception as e:
                 report_error("failed to upload to dropbox", image, e)
                 os.remove(os.path.join(entry[windows_server_folder],file_name))
